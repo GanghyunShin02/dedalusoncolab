@@ -1,69 +1,47 @@
-#!/usr/bin/env bash
-set -e
+from pathlib import Path
+import subprocess
+import sys
 
-echo "🔧 Installing Dedalus with micromamba"
+# ==================================================
+# Repository root
+# ==================================================
+REPO_DIR = Path(__file__).resolve().parent
 
-# --------------------------------------------------
-# 1. Paths
-# --------------------------------------------------
-MAMBA_ROOT_PREFIX="/content/micromamba"
-MAMBA_BIN="${MAMBA_ROOT_PREFIX}/bin/micromamba"
+INSTALL_SCRIPT = REPO_DIR / "setup" / "install_dedalus.sh"
+MAGIC_FILE     = REPO_DIR / "magic" / "dedalus_magic.py"
 
-ENV_NAME="dedalus"
-YML_FILE="setup/dedalus.yml"
+# ==================================================
+# Helper
+# ==================================================
+def run(cmd, cwd=None):
+    subprocess.run(
+        cmd,
+        cwd=cwd,
+        check=True
+    )
 
-# --------------------------------------------------
-# 2. Package cache (Drive OPTIONAL)
-# --------------------------------------------------
-echo "📦 Checking package cache location..."
+# ==================================================
+# Sanity check
+# ==================================================
+if not INSTALL_SCRIPT.exists():
+    raise FileNotFoundError(f"install_dedalus.sh not found: {INSTALL_SCRIPT}")
 
-if [ -d "/content/drive/MyDrive" ]; then
-  echo "   ✅ Google Drive detected — using persistent cache"
-  export MAMBA_PKGS_DIRS="/content/drive/MyDrive/mamba_pkgs"
-else
-  echo "   ⚠️ Google Drive not mounted — using local cache"
-  export MAMBA_PKGS_DIRS="/content/mamba_pkgs"
-fi
+if not MAGIC_FILE.exists():
+    raise FileNotFoundError(f"dedalus_magic.py not found: {MAGIC_FILE}")
 
-# --------------------------------------------------
-# 3. Create directories
-# --------------------------------------------------
-mkdir -p "${MAMBA_ROOT_PREFIX}/bin"
-mkdir -p "${MAMBA_PKGS_DIRS}"
+# ==================================================
+# 1. Install / update Dedalus environment
+# ==================================================
+print("🔧 Installing Dedalus environment...")
+opts = sys.argv[1:]   # e.g. --clean
+run(["bash", str(INSTALL_SCRIPT), *opts], cwd=REPO_DIR)
 
-# --------------------------------------------------
-# 4. Install micromamba
-# --------------------------------------------------
-if [ ! -x "${MAMBA_BIN}" ]; then
-  echo "📥 Downloading micromamba..."
-  curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest \
-    | tar -xvj -C "${MAMBA_ROOT_PREFIX}/bin" --strip-components=1 bin/micromamba
-  chmod +x "${MAMBA_BIN}"
-else
-  echo "📦 micromamba already exists"
-fi
+# ==================================================
+# 2. Load %%dedalus magic into CURRENT kernel
+# ==================================================
+print("✨ Loading Dedalus Jupyter magic...", end=" ")
 
-export MAMBA_ROOT_PREFIX
-export MAMBA_PKGS_DIRS
+code = MAGIC_FILE.read_text()
+exec(compile(code, str(MAGIC_FILE), "exec"), globals())
 
-# --------------------------------------------------
-# 5. Optional clean
-# --------------------------------------------------
-if [[ "${1:-}" == "--clean" ]]; then
-  echo "🧹 Removing existing environment: ${ENV_NAME}"
-  "${MAMBA_BIN}" env remove -n "${ENV_NAME}" -y || true
-fi
-
-# --------------------------------------------------
-# 6. Create / update environment
-# --------------------------------------------------
-if "${MAMBA_BIN}" env list | grep -q "${ENV_NAME}"; then
-  echo "🔁 Updating existing environment: ${ENV_NAME}"
-  "${MAMBA_BIN}" env update -n "${ENV_NAME}" -f "${YML_FILE}"
-else
-  echo "🆕 Creating environment: ${ENV_NAME}"
-  "${MAMBA_BIN}" env create -n "${ENV_NAME}" -f "${YML_FILE}"
-fi
-
-echo
-echo "✅ Dedalus environment ready"
+print("%%dedalus registered ✅")
