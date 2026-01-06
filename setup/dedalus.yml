@@ -1,27 +1,16 @@
 name: dedalus
 channels:
   - conda-forge
-
 dependencies:
   - python=3.10
-
-  # Numerical core
+  - mpi
+  - openmpi
+  - fftw
+  - hdf5
   - numpy
   - scipy
-  - h5py
+  - matplotlib
   - cython
-
-  # MPI (Colab에서 mpich가 가장 안정적)
-  - mpich
-  - mpi4py
-
-  # FFT (Dedalus 핵심)
-  - fftw
-
-  # Build / runtime helpers
   - setuptools
   - pip
-
-  # Dedalus itself
-  - pip:
-      - dedalus
+  - dedalus
