@@ -1,23 +1,15 @@
 #!/usr/bin/env bash
 set -e
 
-# ==================================================
-# Dedalus install script for Google Colab
-# - micromamba binary : /content/micromamba/bin
-# - package cache     : Google Drive (if mounted)
-#                       or local (/content)
-# ==================================================
-
 echo "🔧 Installing Dedalus with micromamba"
 
-# --------------------------------------------------
-# 1. Paths
-# --------------------------------------------------
 MAMBA_ROOT_PREFIX="/content/micromamba"
 MAMBA_BIN="${MAMBA_ROOT_PREFIX}/bin/micromamba"
-
 ENV_NAME="dedalus"
-YML_FILE="setup/dedalus.yml"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+YML_FILE="${SCRIPT_DIR}/dedalus.yml"
+
 
 # --------------------------------------------------
 # 2. Package cache (Drive OPTIONAL)
