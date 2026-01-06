@@ -1,12 +1,17 @@
 # ==================================================
-# dedalus_magic.py
+# dedalus_magic.py  (FINAL, WORKING VERSION)
 # ==================================================
 
-import os, subprocess, tempfile, textwrap, shlex
+import os
+import subprocess
+import tempfile
+import textwrap
+import shlex
+
 from IPython.core.magic import register_cell_magic
 
 # --------------------------------------------------
-# micromamba hard-coded path (NO PATH DEPENDENCY)
+# micromamba hard-coded path
 # --------------------------------------------------
 MICROMAMBA = "/content/micromamba/bin/micromamba"
 ENV_NAME   = "dedalus"
@@ -48,6 +53,7 @@ def mpi_version(env):
 # --------------------------------------------------
 @register_cell_magic
 def dedalus(line, cell):
+
     args = shlex.split(line)
 
     # -----------------------------
@@ -58,17 +64,31 @@ def dedalus(line, cell):
     time_mode = "--time" in args
 
     if "-np" in args:
-        np = int(args[args.index("-np") + 1])
+        i = args.index("-np")
+        if i + 1 >= len(args):
+            raise ValueError("'-np' requires a value")
+        np = int(args[i + 1])
+        if np < 1:
+            raise ValueError("'-np' must be >= 1")
 
     # -----------------------------
-    # Environment
+    # Environment (CRITICAL FIX)
     # -----------------------------
     env = os.environ.copy()
+
+    # 🔥 matplotlib inline backend 완전 제거
+    env.pop("MPLBACKEND", None)
+    env["MPLBACKEND"] = "Agg"
+
+    # MPI root 허용 (Colab 필수)
     env.update({
         "OMPI_ALLOW_RUN_AS_ROOT": "1",
         "OMPI_ALLOW_RUN_AS_ROOT_CONFIRM": "1",
     })
 
+    # -----------------------------
+    # MPI detection
+    # -----------------------------
     mpi_impl = detect_mpi(env)
     mpi_ver  = mpi_version(env)
 
@@ -99,11 +119,10 @@ import dedalus, sys, platform, os
 
 comm = MPI.COMM_WORLD
 if comm.rank == 0:
-    print()
     print("🐍 Python          :", sys.version.split()[0])
     print("📦 Dedalus         :", dedalus.__version__)
     print("💻 Platform        :", platform.platform())
-    print("🧵 Running as root :", os.geteuid() == 0)
+    print("🧵 MPI size        :", comm.size)
 """
         with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:
             f.write(info_code)
